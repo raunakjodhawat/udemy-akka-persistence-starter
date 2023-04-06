@@ -35,15 +35,15 @@ object DetachingModels extends App {
   )
   val couponManager = system.actorOf(Props[CouponManager], "couponManager")
 
-//  for (i <- 1 to 5) {
+//  for (i <- 10 to 15) {
 //    val coupon = Coupon(s"MEGA_COUPON_$i", 100)
-//    val user = User(s"$i", s"user_$i@gmail.com")
+//    val user = User(s"$i", s"user_$i@gmail.com", s"user_$i")
 //    couponManager ! ApplyCoupon(user, coupon)
 //  }
 }
 
 object DomainModel {
-  case class User(id: String, email: String)
+  case class User(id: String, email: String, name: String)
   case class Coupon(code: String, promotionAmount: Int)
   // Command
   case class ApplyCoupon(user: User, coupon: Coupon)
@@ -52,7 +52,17 @@ object DomainModel {
 }
 
 object DataModel {
-  case class WrittenCouponApplied(code: String, userId: String, email: String)
+  case class WrittenCouponApplied(
+      code: String,
+      userId: String,
+      email: String
+  )
+  case class WrittenCouponAppliedV2(
+      code: String,
+      userId: String,
+      email: String,
+      name: String
+  )
 }
 
 class ModelAdaptor extends EventAdapter {
@@ -64,7 +74,7 @@ class ModelAdaptor extends EventAdapter {
   override def toJournal(event: Any): Any = event match {
     case event @ CouponApplied(code, user) => {
       println(s"I am converting $event to dataModel")
-      WrittenCouponApplied(code, user.id, user.email)
+      WrittenCouponAppliedV2(code, user.id, user.email, user.name)
     }
   }
 
@@ -73,7 +83,13 @@ class ModelAdaptor extends EventAdapter {
     event match {
       case WrittenCouponApplied(code, userId, userEmail) => {
         println(s"I am converting $event to domain model")
-        EventSeq.single(CouponApplied(code, User(userId, userEmail)))
+        EventSeq.single(
+          CouponApplied(code, User(userId, userEmail, "default_name"))
+        )
+      }
+      case WrittenCouponAppliedV2(code, userId, userEmail, name) => {
+        println(s"I am converting $event to domain model")
+        EventSeq.single(CouponApplied(code, User(userId, userEmail, name)))
       }
       case e => EventSeq.single(e)
     }
